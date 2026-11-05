@@ -1,5 +1,11 @@
 # EduWarehouse
 
+[![weekly-refresh](https://github.com/BlessingSK1998/eduwarehouse/actions/workflows/refresh.yml/badge.svg)](https://github.com/BlessingSK1998/eduwarehouse/actions/workflows/refresh.yml)
+
+### [Open the live dashboard →](https://blessingsk1998.github.io/eduwarehouse/)
+
+[![EduWarehouse dashboard: regional trends and highest/lowest countries](docs/dashboard.png)](https://blessingsk1998.github.io/eduwarehouse/)
+
 An automated education-indicators pipeline. It pulls from three public APIs, lands the raw data in DuckDB, models it with dbt, tests it, and rebuilds a dashboard every week via GitHub Actions.
 
 ```
