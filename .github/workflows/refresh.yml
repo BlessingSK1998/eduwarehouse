@@ -1,0 +1,73 @@
+name: weekly-refresh
+
+on:
+  schedule:
+    - cron: "0 5 * * 1"        # every Monday 05:00 UTC
+  workflow_dispatch:           # manual run button
+  pull_request:                # PRs run unit tests + the full build, but never deploy
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12", cache: pip}
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -q tests
+
+  refresh:
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12", cache: pip}
+      - run: pip install -r requirements.txt
+
+      - name: Extract and load (World Bank, UIS, Eurostat -> DuckDB)
+        run: python -m pipeline.run all
+
+      - name: dbt deps / build (models + data-quality tests)
+        working-directory: dbt
+        run: |
+          dbt deps --profiles-dir .
+          dbt build --profiles-dir .
+          dbt source freshness --profiles-dir .
+
+      - name: Build dashboard
+        run: python dashboard/build.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eduwarehouse-${{ github.run_id }}
+          path: |
+            data/eduwarehouse.duckdb
+            dashboard/index.html
+          retention-days: 90
+
+      - name: Prepare Pages site
+        if: github.event_name != 'pull_request'
+        run: mkdir site && cp dashboard/index.html site/index.html
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request'
+        with: {path: site}
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: refresh
+    runs-on: ubuntu-latest
+    permissions: {pages: write, id-token: write}
+    environment: {name: github-pages, url: "${{ steps.deployment.outputs.page_url }}"}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
