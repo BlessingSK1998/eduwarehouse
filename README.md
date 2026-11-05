@@ -46,7 +46,7 @@ Individual steps: `make extract`, `make load`, `make build` (dbt), `make dashboa
 
 ## Not verified
 
-- The GitHub Actions workflow has been syntax-checked locally; check the first run in the Actions tab. For the Pages deploy, enable Settings → Pages → Source: GitHub Actions.
+- The GitHub Actions workflow has been syntax-checked locally but **has not run on GitHub yet**. It must live at the root of a repository to execute; if this folder stays inside a larger repo, move `.github/` to the repo root and prefix the paths with `analysis/eduwarehouse/`. For Pages deploys, enable Settings → Pages → Source: GitHub Actions.
 - Everything else (extract, load, dbt build, dashboard) was run end to end against the live APIs on 2026-11-05.
 
 ## Design choices
