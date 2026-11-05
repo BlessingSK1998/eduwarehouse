@@ -1,0 +1,22 @@
+version: 2
+
+models:
+  - name: stg_countries
+    columns:
+      - name: country_iso3
+        data_tests: [not_null, unique]
+  - name: stg_worldbank
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments: {combination_of_columns: [source_code, country_iso3, year]}
+    columns:
+      - name: value
+        data_tests: [not_null]
+  - name: stg_uis
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments: {combination_of_columns: [source_code, country_iso3, year]}
+  - name: stg_eurostat
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments: {combination_of_columns: [source_code, country_iso3, year]}

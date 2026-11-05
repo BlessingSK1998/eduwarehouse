@@ -1,0 +1,73 @@
+version: 2
+
+models:
+  - name: dim_country
+    description: One row per sovereign country/territory (World Bank aggregates removed).
+    columns:
+      - name: country_iso3
+        data_tests: [not_null, unique]
+      - name: country_name
+        data_tests: [not_null]
+
+  - name: dim_indicator
+    description: Catalogue of indicators, their source code, unit and a plausible upper bound.
+    columns:
+      - name: indicator_key
+        data_tests: [not_null, unique]
+      - name: source
+        data_tests:
+          - accepted_values:
+              arguments: {values: [worldbank, uis, eurostat]}
+
+  - name: fct_indicator_observation
+    description: Unified long fact table, grain = indicator x country x year.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments: {combination_of_columns: [indicator_key, country_iso3, year]}
+    columns:
+      - name: indicator_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('dim_indicator'), field: indicator_key}
+      - name: country_iso3
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('dim_country'), field: country_iso3}
+      - name: year
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments: {min_value: 1990, inclusive: true}
+      - name: value
+        data_tests: [not_null]
+
+  - name: mart_country_latest
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments: {combination_of_columns: [country_iso3, indicator_key]}
+
+  - name: mart_region_trends
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments: {combination_of_columns: [region, indicator_key, year]}
+    columns:
+      - name: n_countries
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments: {min_value: 3}
+
+  - name: mart_source_reconciliation
+    columns:
+      - name: abs_diff
+        data_tests: [not_null]
+
+  - name: mart_data_coverage
+    description: Per-indicator coverage; every catalogued indicator must have landed data.
+    data_tests:
+      - dbt_utils.expression_is_true:
+          arguments: {expression: "n_observations > 0"}
+    columns:
+      - name: indicator_key
+        data_tests: [unique]

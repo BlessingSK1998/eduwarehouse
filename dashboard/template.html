@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EduWarehouse Dashboard</title>
+<style>
+:root{--bg:#f7f7f5;--card:#fff;--ink:#1a1a18;--mute:#6b6b66;--line:#e3e3de;--accent:#2a5bd7;--warn:#b45309;
+--c1:#2a5bd7;--c2:#d9480f;--c3:#2b8a3e;--c4:#9c36b5;--c5:#0c8599;--c6:#c2255c;--c7:#5c940d;--c8:#6b6b66}
+@media (prefers-color-scheme:dark){:root{--bg:#141413;--card:#1e1e1c;--ink:#ecece8;--mute:#9a9a93;--line:#33332f;--accent:#7aa2ff;--warn:#f0a35e;
+--c1:#7aa2ff;--c2:#ff9462;--c3:#6fcf85;--c4:#d48be6;--c5:#5fd0e0;--c6:#f27aa5;--c7:#a8d65c;--c8:#9a9a93}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+main{max-width:1080px;margin:0 auto;padding:24px 16px 56px}
+h1{font-size:24px;margin:0 0 4px}h2{font-size:15px;margin:0 0 12px}
+.sub{color:var(--mute);margin:0 0 20px;font-size:13px}
+select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);max-width:100%}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:16px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+.kpi b{display:block;font-size:26px;font-variant-numeric:tabular-nums}.kpi span{color:var(--mute);font-size:12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:820px){.grid{grid-template-columns:1fr}}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--mute);margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px}
+svg{width:100%;height:auto;display:block}svg text{fill:var(--mute);font-size:11px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:6px 8px;text-align:left;border-bottom:1px solid var(--line)}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}th{color:var(--mute);font-weight:600}
+.note{border-left:3px solid var(--warn);padding-left:12px;color:var(--mute);font-size:13px;margin-top:12px}
+.empty{color:var(--mute);font-size:13px;padding:24px 0}
+.tablewrap{overflow-x:auto}
+</style>
+</head>
+<body>
+<main>
+<h1>EduWarehouse</h1>
+<p class="sub">Education indicators from the World Bank, UNESCO UIS and Eurostat. Built <span id="built"></span> from the dbt marts.</p>
+<label for="ind" class="sub">Indicator&nbsp;</label><select id="ind"></select>
+<div class="kpis" id="kpis"></div>
+<div class="grid">
+  <div class="card"><h2>Regional average over time</h2><div id="trend"></div><div class="legend" id="legend"></div></div>
+  <div class="card"><h2 id="rankTitle">Highest and lowest, latest year</h2><div id="rank"></div></div>
+</div>
+<div class="card" style="margin-top:12px"><h2>Data coverage</h2><div class="tablewrap"><table id="cov"></table></div>
+  <p class="note" id="recon"></p></div>
+</main>
+<script>
+const D = /*__DATA__*/null;
+const $ = id => document.getElementById(id), NS = "http://www.w3.org/2000/svg";
+const COLORS = ["--c1","--c2","--c3","--c4","--c5","--c6","--c7","--c8"].map(v=>`var(${v})`);
+const fmt = (x,d=1)=>x==null?"–":Number(x).toLocaleString(undefined,{maximumFractionDigits:d});
+const esc = s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+$("built").textContent = D.built_at;
+$("ind").innerHTML = D.indicators.map(i=>`<option value="${i.indicator_key}">${esc(i.indicator_name)}</option>`).join("");
+const median = a=>{a=[...a].sort((x,y)=>x-y);const m=a.length>>1;return a.length%2?a[m]:(a[m-1]+a[m])/2};
+
+function render(){
+  const key=$("ind").value, meta=D.indicators.find(i=>i.indicator_key===key);
+  const latest=D.latest.filter(r=>r.indicator_key===key);
+  const trends=D.trends.filter(r=>r.indicator_key===key);
+  const yrs=latest.map(r=>r.year);
+  $("kpis").innerHTML=[
+    [latest.length,"countries with data"],
+    [latest.length?fmt(median(latest.map(r=>r.value)))+" "+esc(meta.unit):"–","median, latest value"],
+    [yrs.length?Math.max(...yrs):"–","most recent year"],
+    [esc(meta.source),"source"]
+  ].map(([b,s])=>`<div class="card kpi"><b>${b}</b><span>${s}</span></div>`).join("");
+  drawTrend(trends,meta); drawRank(latest,meta);
+}
+
+function el(n,a,t){const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);if(t!=null)e.textContent=t;return e}
+
+function drawTrend(rows,meta){
+  const box=$("trend"),lg=$("legend");box.innerHTML="";lg.innerHTML="";
+  if(!rows.length){box.innerHTML='<div class="empty">Not enough countries per region (need 3+) for this indicator.</div>';return}
+  const regions=[...new Set(rows.map(r=>r.region))].sort();
+  const W=520,H=280,m={l:40,r:12,t:10,b:24};
+  const xs=rows.map(r=>r.year),ys=rows.map(r=>r.v);
+  const x0=Math.min(...xs),x1=Math.max(...xs),y1=Math.max(...ys)*1.05,y0=Math.min(0,Math.min(...ys));
+  const X=v=>m.l+(x1===x0?0.5:(v-x0)/(x1-x0))*(W-m.l-m.r),Y=v=>H-m.b-(v-y0)/(y1-y0)*(H-m.t-m.b);
+  const s=el("svg",{viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":"Regional trend of "+meta.indicator_name});
+  for(let i=0;i<=4;i++){const v=y0+(y1-y0)*i/4;s.append(el("line",{x1:m.l,x2:W-m.r,y1:Y(v),y2:Y(v),stroke:"var(--line)"}),el("text",{x:m.l-6,y:Y(v)+4,"text-anchor":"end"},fmt(v,0)))}
+  [x0,Math.round((x0+x1)/2),x1].forEach(v=>s.append(el("text",{x:X(v),y:H-6,"text-anchor":"middle"},v)));
+  regions.forEach((rg,i)=>{
+    const pts=rows.filter(r=>r.region===rg).sort((a,b)=>a.year-b.year),c=COLORS[i%COLORS.length];
+    s.append(el("path",{d:pts.map((p,j)=>(j?"L":"M")+X(p.year)+" "+Y(p.v)).join(""),fill:"none",stroke:c,"stroke-width":2}));
+    pts.forEach(p=>{const d=el("circle",{cx:X(p.year),cy:Y(p.v),r:pts.length<8?3:2,fill:c});d.append(el("title",{},`${rg} ${p.year}: ${fmt(p.v)} (${p.n} countries)`));s.append(d)});
+    lg.insertAdjacentHTML("beforeend",`<span><i style="background:${c}"></i>${esc(rg)}</span>`);
+  });
+  box.append(s);
+}
+
+function drawRank(latest,meta){
+  const box=$("rank");box.innerHTML="";
+  if(latest.length<2){box.innerHTML='<div class="empty">No data.</div>';return}
+  const sorted=[...latest].sort((a,b)=>b.value-a.value);
+  const n=Math.min(8,sorted.length>>1);
+  const rows=[...sorted.slice(0,n),null,...sorted.slice(-n)];
+  const W=520,rh=22,H=rows.length*rh+8,lw=150,max=Math.max(...sorted.map(r=>r.value))||1;
+  const s=el("svg",{viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":"Highest and lowest countries"});
+  rows.forEach((r,i)=>{
+    const y=i*rh+4;
+    if(!r){s.append(el("text",{x:lw,y:y+14},"⋯"));return}
+    const w=Math.max(1,r.value/max*(W-lw-70)),top=i<n;
+    s.append(el("text",{x:lw-8,y:y+14,"text-anchor":"end"},r.name.length>22?r.name.slice(0,21)+"…":r.name));
+    const b=el("rect",{x:lw,y:y+2,width:w,height:rh-8,rx:2,fill:top?"var(--c1)":"var(--c2)"});
+    b.append(el("title",{},`${r.name} (${r.year}): ${fmt(r.value)} ${meta.unit}`));s.append(b);
+    s.append(el("text",{x:lw+w+6,y:y+14},`${fmt(r.value)} · ${r.year}`));
+  });
+  box.append(s);
+}
+
+$("cov").innerHTML="<tr><th>Indicator</th><th>Source</th><th class='n'>Countries</th><th class='n'>Observations</th><th class='n'>Years</th></tr>"+
+  D.coverage.map(c=>`<tr><td>${esc(c.indicator_name)}</td><td>${esc(c.source)}</td><td class="n">${c.n_countries}</td><td class="n">${c.n_observations.toLocaleString()}</td><td class="n">${c.first_year}–${c.last_year}</td></tr>`).join("");
+const r=D.reconciliation;
+$("recon").textContent=`Source check: World Bank and UIS both publish primary completion. Across ${r.n_pairs} country-years they overlap, the median gap is ${r.median_diff} points and ${r.pct_over_5}% differ by more than 5 points (different definitions of "completion"). The pipeline reports this as a dbt warning, not a failure.`;
+$("ind").addEventListener("change",render);render();
+</script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+eduwarehouse:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('EDU_DB_PATH', '../data/eduwarehouse.duckdb') }}"
+      threads: 4

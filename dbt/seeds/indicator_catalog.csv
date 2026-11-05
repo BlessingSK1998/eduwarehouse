@@ -1,0 +1,13 @@
+indicator_key,source,source_code,indicator_name,unit,theme,max_plausible_value
+literacy_adult,worldbank,SE.ADT.LITR.ZS,Adult literacy rate (15+),%,Outcomes,100
+enrol_primary_net,worldbank,SE.PRM.NENR,Net enrolment rate - primary,%,Access,100
+enrol_secondary_gross,worldbank,SE.SEC.ENRR,Gross enrolment ratio - secondary,%,Access,170
+enrol_tertiary_gross,worldbank,SE.TER.ENRR,Gross enrolment ratio - tertiary,%,Access,170
+edu_spend_pct_gdp,worldbank,SE.XPD.TOTL.GD.ZS,Government expenditure on education (% of GDP),% of GDP,Funding,25
+completion_primary_wb,worldbank,SE.PRM.CMPT.ZS,Primary completion rate (World Bank),%,Outcomes,170
+completion_primary_uis,uis,CR.1,Completion rate - primary (UIS),%,Outcomes,170
+completion_lower_sec_uis,uis,CR.2,Completion rate - lower secondary (UIS),%,Outcomes,170
+completion_upper_sec_uis,uis,CR.3,Completion rate - upper secondary (UIS),%,Outcomes,170
+out_of_school_primary,uis,ROFST.1.CP,Out-of-school rate - primary age (UIS),%,Access,100
+tertiary_attainment_25_34,eurostat,edat_lfse_03,Tertiary attainment aged 25-34 (Eurostat),%,Outcomes,100
+early_leavers_18_24,eurostat,edat_lfse_14,Early leavers from education and training 18-24 (Eurostat),%,Outcomes,100

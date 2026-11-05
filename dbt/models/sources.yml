@@ -1,0 +1,15 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: raw
+    description: Landing tables written by `python -m pipeline.run load`.
+    loaded_at_field: _loaded_at
+    freshness:
+      warn_after: {count: 8, period: day}     # pipeline runs weekly
+      error_after: {count: 15, period: day}
+    tables:
+      - name: wb_countries
+      - name: wb_indicators
+      - name: uis_indicators
+      - name: eurostat_indicators
